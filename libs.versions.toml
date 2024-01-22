@@ -1,0 +1,20 @@
+[versions]
+parquet = "1.13.1"
+hadoop = "3.3.6"
+junit = "5.10.1"
+assertj = "3.25.1"
+
+[libraries]
+parquet-avro = { module = "org.apache.parquet:parquet-avro", version.ref = "parquet" }
+hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop" }
+
+# Testing libs
+junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+
+[bundles]
+junit = ["junit-api", "junit-engine"]
+
+[plugins]
+#versions = { id = "com.github.ben-manes.versions", version = "0.45.0" }

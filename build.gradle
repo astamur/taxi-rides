@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+group = 'dev.astamur'
+version = '0.0.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation libs.parquet.avro
+    implementation libs.hadoop.client
+
+    testImplementation libs.bundles.junit
+    testImplementation libs.assertj
+}
+
+test {
+    useJUnitPlatform()
+}
