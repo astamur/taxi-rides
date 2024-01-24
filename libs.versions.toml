@@ -1,12 +1,15 @@
 [versions]
 parquet = "1.13.1"
 hadoop = "3.3.6"
+jol = "0.17"
 junit = "5.10.1"
 assertj = "3.25.1"
+
 
 [libraries]
 parquet-avro = { module = "org.apache.parquet:parquet-avro", version.ref = "parquet" }
 hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop" }
+jol = { module = "org.openjdk.jol:jol-core", version.ref = "jol" }
 
 # Testing libs
 junit-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }

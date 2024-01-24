@@ -1,4 +1,4 @@
-package dev.astamur.taxirides.parquet;
+package dev.astamur.taxirides.reader;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class SerialParquetReaderTest {
     @Test
     public void shouldReadOneFile() throws IOException {
-        try (var reader = ParquetReaders.readSerial(new Path("test"))) {
+        try (var reader = Readers.serialParquetReader(new Path("test"))) {
             assertNotNull(reader.read());
         }
     }
