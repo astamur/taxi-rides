@@ -1,18 +1,21 @@
 [versions]
 parquet = "1.13.1"
 hadoop = "3.3.6"
+picocli = "4.7.5"
 log4j = "2.22.1"
+dropwizard = "4.2.25"
 jol = "0.17"
 junit = "5.10.1"
 assertj = "3.25.1"
-micrometer = "1.12.2"
 
 [libraries]
 parquet-avro = { module = "org.apache.parquet:parquet-avro", version.ref = "parquet" }
 hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop" }
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
-micrometer = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
+dropwizard-core = { module = "io.dropwizard.metrics:metrics-core", version.ref = "dropwizard" }
+dropwizard-jvm = { module = "io.dropwizard.metrics:metrics-jvm", version.ref = "dropwizard" }
 jol = { module = "org.openjdk.jol:jol-core", version.ref = "jol" }
 
 # Testing libs
@@ -24,6 +27,7 @@ assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 [bundles]
 log4j = ["log4j-api", "log4j-core"]
 junit = ["junit-api", "junit-engine", "junit-params"]
+dropwizard = ["dropwizard-core", "dropwizard-jvm"]
 
 [plugins]
 #versions = { id = "com.github.ben-manes.versions", version = "0.45.0" }

@@ -1,5 +1,14 @@
 package dev.astamur.taxirides.processor;
 
+import static dev.astamur.taxirides.config.Metrics.COUNTER_RIDES_FAILED;
+import static dev.astamur.taxirides.config.Metrics.COUNTER_RIDES_TOTAL;
+import static dev.astamur.taxirides.config.Metrics.HISTOGRAM_RIDES_QUEUE_SIZE;
+import static dev.astamur.taxirides.config.Metrics.METER_RIDES_READ_RATE;
+import static dev.astamur.taxirides.config.Metrics.METER_RIDES_WRITE_RATE;
+import static dev.astamur.taxirides.config.Metrics.TIMER_RIDES_INSERT;
+import static dev.astamur.taxirides.config.Metrics.TIMER_RIDES_QUERY;
+
+import dev.astamur.taxirides.config.Metrics;
 import dev.astamur.taxirides.model.Config;
 import dev.astamur.taxirides.model.Intervals;
 import dev.astamur.taxirides.model.Ride;
@@ -7,8 +16,6 @@ import dev.astamur.taxirides.reader.Parser;
 import dev.astamur.taxirides.reader.Readers;
 import dev.astamur.taxirides.tree.AVLIntervalTree;
 import dev.astamur.taxirides.tree.IntervalTree;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,7 +31,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,9 +43,9 @@ public class RideAverageDistances implements AverageDistances {
 
     private final Config config;
 
-    public RideAverageDistances(Config config) {
-        Metrics.addRegistry(new SimpleMeterRegistry());
+    private final Metrics metrics = new Metrics();
 
+    public RideAverageDistances(Config config) {
         this.config = config;
     }
 
@@ -48,6 +54,7 @@ public class RideAverageDistances implements AverageDistances {
         try (var loader = new FilesLoader(dataDir)) {
             loader.load();
         }
+        metrics.logMemoryConsumption(this);
     }
 
     @Override
@@ -56,12 +63,14 @@ public class RideAverageDistances implements AverageDistances {
             config.granularity().truncate(start),
             config.granularity().truncate(end));
 
-        return tree.search(interval).result();
+        try (var ctx = metrics.time(TIMER_RIDES_QUERY)) {
+            return tree.search(interval).result();
+        }
     }
 
     @Override
     public void close() {
-        // No resources for disposal
+        metrics.close();
     }
 
     /**
@@ -79,7 +88,6 @@ public class RideAverageDistances implements AverageDistances {
         private final ExecutorService filesExecutor;
         private final ExecutorService treeExecutor = Executors.newSingleThreadExecutor();
         private final BlockingQueue<Ride> ridesQueue = new ArrayBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
-        private final AtomicLong counter = new AtomicLong(0);
         private final Parser<GenericRecord, Ride> parser;
 
         private final Path dataDir;
@@ -141,7 +149,6 @@ public class RideAverageDistances implements AverageDistances {
                     }
                 }
 
-                log.info("Files reading finished. Total rides read: {}", counter.get());
                 readingFinished = true;
 
                 try {
@@ -162,16 +169,12 @@ public class RideAverageDistances implements AverageDistances {
         @Override
         public void close() {
             terminateExecutors();
-            log.info("Metrics: {}", Metrics.globalRegistry.toString());
         }
 
         private final class FileReader implements Runnable {
             private static final Logger log = LogManager.getLogger();
 
             private final Path path;
-
-            private long total = 0;
-            private long failed = 0;
 
             private FileReader(Path path) {
                 this.path = path;
@@ -184,21 +187,18 @@ public class RideAverageDistances implements AverageDistances {
                     while (true) {
                         try {
                             if ((ride = reader.read()) == null) {
-                                log.info("Finished reading file: {}. Total records:{}. Failed records: {}",
-                                    path, total, failed);
+                                log.info("Finished reading file: {}.", path);
                                 return;
                             }
-
+                            metrics.meterMark(METER_RIDES_READ_RATE);
                             while (!ridesQueue.offer(ride, DEFAULT_WRITE_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS)) {
                                 log.warn("Writing timeout triggered");
                             }
-                            Metrics.counter("rides.total").increment();
-                            counter.incrementAndGet();
-                            total++;
+                            metrics.increment(COUNTER_RIDES_TOTAL);
                         } catch (IllegalArgumentException e) {
                             // Log and skip a single row parsing problem
                             log.debug("Can't process record", e);
-                            failed++;
+                            metrics.increment(COUNTER_RIDES_FAILED);
                         }
                     }
                 } catch (IOException e) {
@@ -215,17 +215,15 @@ public class RideAverageDistances implements AverageDistances {
 
             @Override
             public void run() {
-                var start = System.currentTimeMillis();
                 Ride ride;
                 try {
                     while (!readingFinished) {
-                        if (System.currentTimeMillis() - start > 500) {
-                            start = System.currentTimeMillis();
-                            log.info("METRICS. Queue size: {}", ridesQueue.size());
-                        }
-
+                        metrics.histogramUpdate(HISTOGRAM_RIDES_QUEUE_SIZE, ridesQueue.size());
                         if ((ride = ridesQueue.poll(DEFAULT_READ_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS)) != null) {
-                            tree.insert(ride.interval(), ride);
+                            metrics.meterMark(METER_RIDES_WRITE_RATE);
+                            try (var ctx = metrics.time(TIMER_RIDES_INSERT)) {
+                                tree.insert(ride.interval(), ride);
+                            }
                         }
                     }
                 } catch (InterruptedException e) {

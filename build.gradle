@@ -12,10 +12,11 @@ repositories {
 dependencies {
     implementation libs.parquet.avro
     implementation libs.hadoop.client
+    implementation libs.picocli
     implementation libs.bundles.log4j
-    implementation libs.micrometer
+    implementation libs.bundles.dropwizard
+    implementation libs.jol
 
-    testImplementation libs.jol
     testImplementation libs.bundles.junit
     testImplementation libs.assertj
 }

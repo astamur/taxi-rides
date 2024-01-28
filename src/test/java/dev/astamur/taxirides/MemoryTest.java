@@ -42,6 +42,7 @@ public class MemoryTest {
             new TestEntry<>("1d", new AVLIntervalTree<>(provider), new Ride.AvroParser(Granularity.DAYS)));
     }
 
+
     public static void main(String[] args) {
         readDir();
     }
@@ -53,15 +54,12 @@ public class MemoryTest {
         var end = LocalDateTime.parse("2022-01-01T00:00:00");
 
         var config = Config.builder()
-            .limitPerFile(1_000)
+            .limitPerFile(100_000)
             .build();
 
         try (var processor = new RideAverageDistances(config)) {
             processor.init(dataDir);
             log.info("{}", processor.getAverageDistances(start, end));
-
-            log.info("Memory: {}", byteCountToDisplaySize(GraphLayout.parseInstance(processor).totalSize()));
-            //log.info(GraphLayout.parseInstance(processor).toFootprint());
         }
     }
 
