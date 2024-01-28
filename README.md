@@ -1,5 +1,7 @@
 # A taxi rides analyzer
 
+-Djol.magicFieldOffset=true
+
 ### Tasks:
 - Implement a parquet files reader;
 - Implement an interval tree;

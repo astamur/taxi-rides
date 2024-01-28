@@ -1,10 +1,11 @@
 package dev.astamur.taxirides.processor;
 
+import java.io.Closeable;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-public interface AverageDistances {
+public interface AverageDistances extends Closeable {
     /**
      * Initializes the instance.
      *

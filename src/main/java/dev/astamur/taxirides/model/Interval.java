@@ -1,4 +1,4 @@
-package dev.astamur.taxirides.tree;
+package dev.astamur.taxirides.model;
 
 public interface Interval extends Comparable<Interval> {
     long start();

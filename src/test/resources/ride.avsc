@@ -1,0 +1,31 @@
+{
+  "namespace": "dev.astamur.taxirides",
+  "type": "record",
+  "name": "Ride",
+  "fields": [
+    {
+      "name": "passenger_count",
+      "type": "double"
+    },
+    {
+      "name": "trip_distance",
+      "type": "double"
+    },
+    {
+      "name": "tpep_pickup_datetime",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-micros",
+        "default": "null"
+      }
+    },
+    {
+      "name": "tpep_dropoff_datetime",
+      "type": {
+        "type": "string",
+        "logicalType": "timestamp-micros",
+        "default": "null"
+      }
+    }
+  ]
+}

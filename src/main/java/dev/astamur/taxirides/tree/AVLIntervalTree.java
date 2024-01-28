@@ -1,21 +1,28 @@
 package dev.astamur.taxirides.tree;
 
 
+import dev.astamur.taxirides.model.Interval;
+import dev.astamur.taxirides.processor.Collector;
+import dev.astamur.taxirides.processor.CollectorProvider;
+import java.time.Instant;
+
 /**
  * An interval tree based on AVL tree and augmented with interval's end.
+ * Intervals are considered as closed (boundaries are included). Duplicates are allowed.
  *
- * @param <V>
- * @param <R>
+ * @param <V> a type of incoming value
+ * @param <R> a result type of the used value collector
+ * @param <C> a collector for values in each node
  */
-public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
-    private final ValueCollectionProvider<V, R> collectionProvider;
-    private Node<V, R> root;
+public class AVLIntervalTree<V, R, C extends Collector<V, R, C>> implements IntervalTree<V, R, C> {
+    private final CollectorProvider<V, R, C> collectionProvider;
+    private Node<V, R, C> root;
 
-    public AVLIntervalTree(ValueCollectionProvider<V, R> collectionProvider) {
+    public AVLIntervalTree(CollectorProvider<V, R, C> collectionProvider) {
         this.collectionProvider = collectionProvider;
     }
 
-    public ValueCollection<V, R> get(Interval interval) {
+    public C get(Interval interval) {
         return get(root, interval);
     }
 
@@ -23,8 +30,8 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         root = insert(root, interval, value);
     }
 
-    public ValueCollection<V, R> search(Interval interval) {
-        var result = collectionProvider.emptyCollection();
+    public C search(Interval interval) {
+        var result = collectionProvider.create();
         search(root, interval, result);
         return result;
     }
@@ -33,7 +40,7 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         print(root);
     }
 
-    private ValueCollection<V, R> get(Node<V, R> node, Interval interval) {
+    private C get(Node<V, R, C> node, Interval interval) {
         if (node == null) {
             return null;
         }
@@ -43,13 +50,13 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         } else if (cmp < 0) {
             return get(node.right, interval);
         } else {
-            return node.values;
+            return node.collector;
         }
     }
 
-    private Node<V, R> insert(Node<V, R> node, Interval interval, V value) {
+    private Node<V, R, C> insert(Node<V, R, C> node, Interval interval, V value) {
         if (node == null) {
-            return new Node<>(interval, collectionProvider.collectionOf(value));
+            return new Node<>(interval, collectionProvider.create(value));
         }
         int cmp = node.compareTo(interval);
         if (cmp > 0) {
@@ -57,37 +64,37 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         } else if (cmp < 0) {
             node.right = insert(node.right, interval, value);
         } else {
-            node.values.append(value);
+            node.collector.add(value);
             return node;
         }
 
         return rebalance(node, interval);
     }
 
-    private void search(Node<V, R> node, Interval query, ValueCollection<V, R> collection) {
+    private void search(Node<V, R, C> node, Interval query, C result) {
         if (node == null) {
             return;
         }
         if (node.isOverlappedBy(query)) {
-            collection.merge(node.values);
+            result.merge(node.collector);
         }
         if (node.left != null && node.left.max >= query.start()) {
-            search(node.left, query, collection);
+            search(node.left, query, result);
         }
         if (node.right != null && node.start < query.end()) {
-            search(node.right, query, collection);
+            search(node.right, query, result);
         }
     }
 
-    private int height(Node<V, R> node) {
+    private int height(Node<V, R, C> node) {
         return (node == null) ? 0 : node.height;
     }
 
-    private int balanceFactor(Node<V, R> node) {
+    private int balanceFactor(Node<V, R, C> node) {
         return (node == null) ? 0 : height(node.left) - height(node.right);
     }
 
-    private void updateNode(Node<V, R> node) {
+    private void updateNode(Node<V, R, C> node) {
         if (node == null) {
             return;
         }
@@ -95,8 +102,8 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         node.max = maxOf(node.end, max(node.left), max(node.right));
     }
 
-    private Node<V, R> rotateRight(Node<V, R> node) {
-        Node<V, R> left = node.left;
+    private Node<V, R, C> rotateRight(Node<V, R, C> node) {
+        Node<V, R, C> left = node.left;
         node.left = left.right;
         left.right = node;
 
@@ -106,8 +113,8 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         return left;
     }
 
-    private Node<V, R> rotateLeft(Node<V, R> node) {
-        Node<V, R> right = node.right;
+    private Node<V, R, C> rotateLeft(Node<V, R, C> node) {
+        Node<V, R, C> right = node.right;
         node.right = right.left;
         right.left = node;
 
@@ -117,7 +124,7 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         return right;
     }
 
-    private Node<V, R> rebalance(Node<V, R> node, Interval newInterval) {
+    private Node<V, R, C> rebalance(Node<V, R, C> node, Interval newInterval) {
         updateNode(node);
         int balance = balanceFactor(node);
 
@@ -136,7 +143,7 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         return node;
     }
 
-    private long max(Node<V, R> node) {
+    private long max(Node<V, R, C> node) {
         if (node == null) {
             return Long.MIN_VALUE;
         }
@@ -147,23 +154,24 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         return Math.max(a, Math.max(b, c));
     }
 
-    private void print(Node<V, R> node) {
+    private void print(Node<V, R, C> node) {
         if (node == null) {
             return;
         }
         print(node.left);
-        System.out.printf("%s:%s\n", node, node.values);
+        System.out.printf("%s\n", node);
+//        System.out.printf("%s:%s\n", node, node.collector);
         print(node.right);
     }
 
-    private static class Node<V, R> {
-        Node<V, R> left, right;
-        ValueCollection<V, R> values;
+    private static class Node<V, R, C> {
+        Node<V, R, C> left, right;
+        C collector;
         int height;
         long start, end, max;
 
-        Node(Interval interval, ValueCollection<V, R> values) {
-            this.values = values;
+        Node(Interval interval, C collector) {
+            this.collector = collector;
             this.height = 1;
             this.end = interval.end();
             this.start = interval.start();
@@ -187,9 +195,9 @@ public class AVLIntervalTree<V, R> implements IntervalTree<V, R> {
         @Override
         public String toString() {
             return "Node{" +
-                "start=" + start +
-                "end=" + end +
-                ", max=" + max +
+                "start=" + Instant.ofEpochMilli(start) +
+                ", end=" + Instant.ofEpochMilli(end) +
+                ", max=" + Instant.ofEpochMilli(max) +
                 '}';
         }
     }

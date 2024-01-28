@@ -1,4 +1,4 @@
-package dev.astamur.taxirides.model;
+package dev.astamur.taxirides.processor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,11 +7,11 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public class AverageAccumulator {
     // Used for calculation to reduce cumulative error
-    private static final RoundingMode DEFAULT_MODE = RoundingMode.HALF_UP;
+    private static final RoundingMode DEFAULT_MODE = RoundingMode.HALF_EVEN;
 
     // Used for scaling final output to remove a cumulative error at the end
     private static final RoundingMode OUTPUT_MODE = RoundingMode.DOWN;
-    private static final int DEFAULT_SCALE = 10;
+    private static final int DEFAULT_SCALE = 20;
     private static final int OUTPUT_SCALE = 10;
     private long count;
     private BigDecimal average;
@@ -46,11 +46,11 @@ public class AverageAccumulator {
     public void merge(AverageAccumulator accumulator) {
         long total = count + accumulator.count;
 
-        BigDecimal left = average.multiply(asBigDecimal(count)
-            .divide(asBigDecimal(total), DEFAULT_MODE));
+        BigDecimal left = average.multiply(asBigDecimal(count))
+            .divide(asBigDecimal(total), DEFAULT_MODE);
 
-        BigDecimal right = accumulator.average.multiply(asBigDecimal(accumulator.count)
-            .divide(asBigDecimal(total), DEFAULT_MODE));
+        BigDecimal right = accumulator.average.multiply(asBigDecimal(accumulator.count))
+            .divide(asBigDecimal(total), DEFAULT_MODE);
 
         count = total;
         average = left.add(right);
@@ -58,6 +58,10 @@ public class AverageAccumulator {
 
     public double average() {
         return average.setScale(OUTPUT_SCALE, OUTPUT_MODE).doubleValue();
+    }
+
+    public long count() {
+        return count;
     }
 
     @Override

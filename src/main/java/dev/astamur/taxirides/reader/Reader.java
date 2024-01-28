@@ -1,8 +1,8 @@
 package dev.astamur.taxirides.reader;
 
 import java.io.Closeable;
-import java.util.Iterator;
+import java.io.IOException;
 
 public interface Reader<T> extends Closeable {
-    Iterator<T> read();
+    T read() throws IOException;
 }
