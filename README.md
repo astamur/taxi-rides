@@ -70,16 +70,16 @@ _Rows with `*_${N}QT` granularity mean that `N` query threads were used._
 ### Used requests
 
 ```
-java -Xms16g -Xmx16g -jar build/libs/taxi-rides-0.0.1.jar
+java -Xms16g -Xmx16g -jar ${PROJECT_ROOT}/build/libs/taxi-rides-0.0.1.jar
 ```
 
 ```
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g SECONDS -l 100000 -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_5 -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_15 -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g HOURS -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g DAYS -m
+load ${PROJECT_ROOT}/data -g SECONDS -l 100000 -m
+load ${PROJECT_ROOT}/data -g MINUTES -m
+load ${PROJECT_ROOT}/data -g MINUTES_5 -m
+load ${PROJECT_ROOT}/data -g MINUTES_15 -m
+load ${PROJECT_ROOT}/data -g HOURS -m
+load ${PROJECT_ROOT}/data -g DAYS -m
 ```
 
 ```
@@ -88,6 +88,6 @@ query 2020-01-01T00:00:00 2021-01-01T00:00:00 -r 100
 
 Requests with multiple query threads (tree shards):
 ```
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_15 -q 5 -m
-load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_15 -q 10 -m
+load ${PROJECT_ROOT}/data -g MINUTES_15 -q 5 -m
+load ${PROJECT_ROOT}/data -g MINUTES_15 -q 10 -m
 ```
