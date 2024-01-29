@@ -1,6 +1,6 @@
 package dev.astamur.taxirides;
 
-import dev.astamur.taxirides.model.Config;
+import dev.astamur.taxirides.config.Config;
 import dev.astamur.taxirides.model.Granularity;
 import dev.astamur.taxirides.processor.RideAverageDistances;
 import java.time.LocalDateTime;

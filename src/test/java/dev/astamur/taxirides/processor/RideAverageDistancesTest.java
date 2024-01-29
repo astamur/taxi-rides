@@ -6,7 +6,7 @@ import static dev.astamur.taxirides.utils.TestUtils.createRide;
 import static dev.astamur.taxirides.utils.TestUtils.ridesToParquet;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.astamur.taxirides.model.Config;
+import dev.astamur.taxirides.config.Config;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;

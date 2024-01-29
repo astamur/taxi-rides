@@ -9,7 +9,7 @@ import static dev.astamur.taxirides.config.Metrics.TIMER_RIDES_INSERT;
 import static dev.astamur.taxirides.config.Metrics.TIMER_RIDES_QUERY;
 
 import dev.astamur.taxirides.config.Metrics;
-import dev.astamur.taxirides.model.Config;
+import dev.astamur.taxirides.config.Config;
 import dev.astamur.taxirides.model.Interval;
 import dev.astamur.taxirides.model.Intervals;
 import dev.astamur.taxirides.model.Ride;

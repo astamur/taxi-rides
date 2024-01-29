@@ -1,4 +1,6 @@
-package dev.astamur.taxirides.model;
+package dev.astamur.taxirides.config;
+
+import dev.astamur.taxirides.model.Granularity;
 
 public record Config(
     Granularity granularity,
