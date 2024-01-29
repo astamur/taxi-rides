@@ -25,5 +25,13 @@ public final class Intervals {
                 return Long.compare(this.end(), o.end());
             }
         }
+
+        @Override
+        public String toString() {
+            return "BaseInterval{" +
+                "start=" + start +
+                ", end=" + end +
+                '}';
+        }
     }
 }

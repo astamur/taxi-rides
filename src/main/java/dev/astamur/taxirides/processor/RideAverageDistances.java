@@ -10,6 +10,7 @@ import static dev.astamur.taxirides.config.Metrics.TIMER_RIDES_QUERY;
 
 import dev.astamur.taxirides.config.Metrics;
 import dev.astamur.taxirides.model.Config;
+import dev.astamur.taxirides.model.Interval;
 import dev.astamur.taxirides.model.Intervals;
 import dev.astamur.taxirides.model.Ride;
 import dev.astamur.taxirides.reader.Parser;
@@ -31,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,15 +40,33 @@ import org.apache.logging.log4j.Logger;
 public class RideAverageDistances implements AverageDistances {
     private static final Logger log = LogManager.getLogger();
 
-    private final IntervalTree<Ride, Map<Integer, Double>, StatisticsCollector> tree =
-        new AVLIntervalTree<>(StatisticsCollector.provider());
+    private final List<IntervalTree<Ride, Map<Integer, Double>, StatisticsCollector>> trees = new ArrayList<>();
 
     private final Config config;
+
+    private final QueryExecutor queryExecutor;
 
     private final Metrics metrics = new Metrics();
 
     public RideAverageDistances(Config config) {
         this.config = config;
+        IntStream.range(0, config.queryThreadsCount()).forEach(i -> trees.add(new AVLIntervalTree<>(StatisticsCollector.provider())));
+        queryExecutor = new QueryExecutor();
+    }
+
+    private static void terminateExecutor(ExecutorService executorService) {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+                if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
+                    log.error("Executor service '{}' didn't terminate", executorService.toString());
+                }
+            }
+        } catch (InterruptedException ie) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
@@ -61,17 +81,16 @@ public class RideAverageDistances implements AverageDistances {
 
     @Override
     public Map<Integer, Double> getAverageDistances(LocalDateTime start, LocalDateTime end) {
-        var interval = Intervals.of(
-            config.granularity().truncate(start),
-            config.granularity().truncate(end));
+        var interval = Intervals.of(config.granularity().truncate(start), config.granularity().truncate(end));
 
         try (var ctx = metrics.time(TIMER_RIDES_QUERY)) {
-            return tree.search(interval).result();
+            return queryExecutor.search(interval).result();
         }
     }
 
     @Override
     public void close() {
+        queryExecutor.close();
         metrics.close();
     }
 
@@ -107,8 +126,7 @@ public class RideAverageDistances implements AverageDistances {
             var fileFutures = new ArrayList<Future<?>>();
 
             try (var files = Files.list(dataDir).filter(this::isParquet)) {
-                files.forEach(filePath -> fileFutures.add(
-                    filesExecutor.submit(new FileReader(filePath))));
+                files.forEach(filePath -> fileFutures.add(filesExecutor.submit(new FileReader(filePath))));
             } catch (IOException e) {
                 throw new RuntimeException("Can't process files.", e);
             }
@@ -124,21 +142,6 @@ public class RideAverageDistances implements AverageDistances {
         private void terminateExecutors() {
             terminateExecutor(treeExecutor);
             terminateExecutor(filesExecutor);
-        }
-
-        private void terminateExecutor(ExecutorService executorService) {
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                    if (!executorService.awaitTermination(30, TimeUnit.SECONDS)) {
-                        log.error("Executor service '{}' didn't terminate", executorService.toString());
-                    }
-                }
-            } catch (InterruptedException ie) {
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
         }
 
         private void await(List<Future<?>> fileFutures, Future<?> treeFuture) {
@@ -217,6 +220,7 @@ public class RideAverageDistances implements AverageDistances {
 
             @Override
             public void run() {
+                long i = 0;
                 Ride ride;
                 try {
                     while (!readingFinished) {
@@ -224,7 +228,8 @@ public class RideAverageDistances implements AverageDistances {
                         if ((ride = ridesQueue.poll(DEFAULT_READ_TIMEOUT_IN_MILLIS, TimeUnit.MILLISECONDS)) != null) {
                             metrics.meterMark(METER_RIDES_WRITE_RATE);
                             try (var ctx = metrics.time(TIMER_RIDES_INSERT)) {
-                                tree.insert(ride.interval(), ride);
+                                // Distribute entries between shards
+                                trees.get((int) (i++ % trees.size())).insert(ride.interval(), ride);
                             }
                         }
                     }
@@ -233,6 +238,48 @@ public class RideAverageDistances implements AverageDistances {
                     log.warn("Tree writer was interrupted");
                 }
             }
+        }
+    }
+
+    private class QueryExecutor implements AutoCloseable {
+        private static final Logger log = LogManager.getLogger();
+        private final ExecutorService queryExecutor;
+
+        public QueryExecutor() {
+            queryExecutor = Executors.newFixedThreadPool(config.fileThreadsCount());
+        }
+
+        public StatisticsCollector search(Interval interval) {
+            var queryFutures = new ArrayList<Future<StatisticsCollector>>();
+
+            IntStream.range(0, trees.size()).forEach(index -> queryFutures.add(queryExecutor.submit(() -> {
+                log.debug("Submitted query {} to shard {}", interval, index);
+                return trees.get(index).search(interval);
+            })));
+
+            return await(queryFutures);
+        }
+
+        private StatisticsCollector await(List<Future<StatisticsCollector>> queryFutures) {
+            try {
+                var result = new StatisticsCollector();
+                for (var future : queryFutures) {
+                    try {
+                        result.merge(future.get());
+                    } catch (ExecutionException | CancellationException e) {
+                        throw new RuntimeException("Exception in a query thread. Can't fulfill the query.", e);
+                    }
+                }
+                return result;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Main thread was interrupted");
+            }
+        }
+
+        @Override
+        public void close() {
+            terminateExecutor(queryExecutor);
         }
     }
 }

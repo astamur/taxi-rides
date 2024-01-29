@@ -17,7 +17,10 @@ number of trips in a search interval).
   distances. This option can be set by using `-g` flag for `load` command (default value `HOURS`).
   But we can save a lot of memory (see `Performance statistics` section).
 - Nodes of the tree store **average statistics** but not the trips. It also helps to same memory.
-- Parallel files loading is possible (configured by `--fileThreadsCount` flag for `load` command, default value is 10).
+- Parallel files loading is possible (configured by `--fileThreadsCount` flag for `load` command, default value
+  is `10`).
+- Parallel query execution (configured by `--queryThreadsCount` flag for `load` command, default value is `1`). But as
+  we can see in the `Performance statistics` section, it didn't give many benefits.
 
 ## Run
 
@@ -52,14 +55,18 @@ some key metrics are published to logs.
 
 ### Results
 
-| Granularity | Trips      | Heap Used(MB) | Tree Size | Tree Nodes | Queue Size <br/>(mean) | Queue Size<br/>(median) | Query Time<br/>(99 %ile, millis) |
-|-------------|------------|---------------|-----------|------------|------------------------|-------------------------|----------------------------------|
-| SECONDS     | 1'200'000  | ~455 MB       | ~422 MB   | 1'193'606  | 829.71                 | 974.00                  | 612.52                           |
-| MINUTES     | 23'839'125 | ~3,5 GB       | ~3 GB     | 7'929'183  | 417.80                 | 176.00                  | 8691.20                          |
-| MINUTES_5   | 23'839'125 | ~659 MB       | ~613 MB   | 959'467    | 373.07                 | 20.00                   | 1343.12                          |
-| MINUTES _15 | 23'839'125 | ~190 MB       | ~158 MB   | 200'941    | 360.79                 | 19.00                   | 382.12                           |
-| HOURS       | 23'839'125 | ~66 MB        | ~35 MB    | 36'083     | 384.57                 | 19.00                   | 84.24                            |
-| DAYS        | 23'839'125 | ~28 MB        | ~7 MB     | 794        | 388.19                 | 21.00                   | 6.09                             |
+| Granularity      | Trips      | Heap Used | Tree Size | Tree Nodes | Queue Size <br/>(mean) | Queue Size<br/>(median) | Query Time<br/>(99 %ile, millis) |
+|------------------|------------|-----------|-----------|------------|------------------------|-------------------------|----------------------------------|
+| SECONDS          | 1'200'000  | ~455 MB   | ~422 MB   | 1'193'606  | 829.71                 | 974.00                  | 612.52                           |
+| MINUTES          | 23'839'125 | ~3,5 GB   | ~3 GB     | 7'929'183  | 417.80                 | 176.00                  | 8691.20                          |
+| MINUTES_5        | 23'839'125 | ~659 MB   | ~613 MB   | 959'467    | 373.07                 | 20.00                   | 1343.12                          |
+| MINUTES _15      | 23'839'125 | ~190 MB   | ~158 MB   | 200'941    | 360.79                 | 19.00                   | 382.12                           |
+| MINUTES _15_5QT  | 23'839'125 | ~533  MB  | ~482 MB   | 694'817    | 243.24                 | 8.00                    | 858.72                           |
+| MINUTES _15_10QT | 23'839'125 | ~805  MB  | ~758 MB   | 1'192'382  | 332.30                 | 19.00                   | 1483.66                          |
+| HOURS            | 23'839'125 | ~66 MB    | ~35 MB    | 36'083     | 384.57                 | 19.00                   | 84.24                            |
+| DAYS             | 23'839'125 | ~28 MB    | ~7 MB     | 794        | 388.19                 | 21.00                   | 6.09                             |
+
+_Rows with `*_${N}QT` granularity mean that `N` query threads were used._
 
 ### Used requests
 
@@ -78,4 +85,10 @@ load /Users/astamur.kirillin/git-personal/taxi-rides/data -g DAYS -m
 
 ```
 query 2020-01-01T00:00:00 2021-01-01T00:00:00 -r 100
+```
+
+Requests with multiple query threads (tree shards):
+```
+load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_15 -q 5 -m
+load /Users/astamur.kirillin/git-personal/taxi-rides/data -g MINUTES_15 -q 10 -m
 ```

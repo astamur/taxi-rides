@@ -110,6 +110,9 @@ public class Application implements AutoCloseable {
             description = "Intervals granularity (SECONDS, MINUTES, MINUTES_5, MINUTES_15, HOURS, DAYS). Default: HOURS")
         private Granularity granularity;
 
+        @Option(names = {"-q", "--queryThreadsCount"}, description = "Number of threads used for query execution. Default: 1.")
+        private Integer queryThreadsCount;
+
         @Option(names = {"-f", "--fileThreadsCount"}, description = "Number of threads used for files loading. Default: 10.")
         private Integer fileThreadsCount;
 
@@ -133,6 +136,9 @@ public class Application implements AutoCloseable {
             var builder = Config.builder();
             if (granularity != null) {
                 builder.granularity(granularity);
+            }
+            if (queryThreadsCount != null) {
+                builder.queryThreadsCount(queryThreadsCount);
             }
             if (fileThreadsCount != null) {
                 builder.fileThreadsCount(fileThreadsCount);

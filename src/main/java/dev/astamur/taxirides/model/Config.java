@@ -1,8 +1,14 @@
 package dev.astamur.taxirides.model;
 
-public record Config(Granularity granularity, int fileThreadsCount, long limitPerFile, boolean printMemoryLayout) {
+public record Config(
+    Granularity granularity,
+    int queryThreadsCount,
+    int fileThreadsCount,
+    long limitPerFile,
+    boolean printMemoryLayout
+) {
     private Config(Builder builder) {
-        this(builder.granularity, builder.fileThreadsCount, builder.limitPerFile, builder.printMemoryLayout);
+        this(builder.granularity, builder.queryThreadsCount, builder.fileThreadsCount, builder.limitPerFile, builder.printMemoryLayout);
     }
 
     public static Config defaultConfig() {
@@ -15,6 +21,7 @@ public record Config(Granularity granularity, int fileThreadsCount, long limitPe
 
     public static class Builder {
         private Granularity granularity = Granularity.HOURS;
+        private int queryThreadsCount = 1;
         private int fileThreadsCount = 10;
         private long limitPerFile = Long.MAX_VALUE;
         private boolean printMemoryLayout = false;
@@ -24,6 +31,10 @@ public record Config(Granularity granularity, int fileThreadsCount, long limitPe
             return this;
         }
 
+        public Builder queryThreadsCount(int queryThreadsCount) {
+            this.queryThreadsCount = queryThreadsCount;
+            return this;
+        }
         public Builder fileThreadsCount(int fileThreadsCount) {
             this.fileThreadsCount = fileThreadsCount;
             return this;
@@ -46,7 +57,9 @@ public record Config(Granularity granularity, int fileThreadsCount, long limitPe
 
         private void validate() throws IllegalStateException {
             StringBuilder sb = new StringBuilder();
-            if (fileThreadsCount < 1) {
+            if (queryThreadsCount < 1) {
+                sb.append("'queryThreadsCount' should be greater than 0.");
+            } else if (fileThreadsCount < 1) {
                 sb.append("'fileThreadsCount' should be greater than 0.");
             } else if (limitPerFile < 0) {
                 sb.append("'limitPerFile' should be greater than or equal 0");
