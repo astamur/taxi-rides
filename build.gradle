@@ -1,9 +1,14 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 group = 'dev.astamur'
 version = '0.0.1'
+
+application {
+    mainClass = 'dev.astamur.taxirides.Application'
+}
 
 repositories {
     mavenCentral()
@@ -12,13 +17,18 @@ repositories {
 dependencies {
     implementation libs.parquet.avro
     implementation libs.hadoop.client
-    implementation libs.picocli
+    implementation libs.bundles.cli
     implementation libs.bundles.log4j
-    implementation libs.bundles.dropwizard
-    implementation libs.jol
+    implementation libs.bundles.metrics
 
     testImplementation libs.bundles.junit
     testImplementation libs.assertj
+}
+
+jar {
+    manifest { attributes "Main-Class": application.mainClass }
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 test {

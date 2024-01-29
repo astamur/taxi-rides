@@ -1,7 +1,9 @@
 [versions]
 parquet = "1.13.1"
 hadoop = "3.3.6"
+jline = "3.25.1"
 picocli = "4.7.5"
+jansi = "2.4.1"
 log4j = "2.22.1"
 dropwizard = "4.2.25"
 jol = "0.17"
@@ -11,6 +13,9 @@ assertj = "3.25.1"
 [libraries]
 parquet-avro = { module = "org.apache.parquet:parquet-avro", version.ref = "parquet" }
 hadoop-client = { module = "org.apache.hadoop:hadoop-client", version.ref = "hadoop" }
+jline = { module = "org.jline:jline", version.ref = "jline" }
+jline-terminal = { module = "org.jline:jline-terminal-jansi", version.ref = "jline" }
+jansi = { module = "org.fusesource.jansi:jansi", version.ref = "jansi" }
 picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
@@ -25,9 +30,10 @@ junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref 
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 [bundles]
+cli = ["jline", "jline-terminal", "jansi", "picocli"]
+metrics = ["dropwizard-core", "dropwizard-jvm", "jol"]
 log4j = ["log4j-api", "log4j-core"]
 junit = ["junit-api", "junit-engine", "junit-params"]
-dropwizard = ["dropwizard-core", "dropwizard-jvm"]
 
 [plugins]
 #versions = { id = "com.github.ben-manes.versions", version = "0.45.0" }
