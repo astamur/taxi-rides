@@ -8,13 +8,12 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.stream.IntStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
@@ -37,6 +36,8 @@ public class Application implements AutoCloseable {
     public static void main(String[] args) throws IOException {
         try (var app = new Application()) {
             app.start();
+        } catch (UserInterruptException e) {
+            System.out.println("Exit. Bye!");
         }
     }
 
@@ -62,7 +63,10 @@ public class Application implements AutoCloseable {
                         break;
                     }
                     new Load().exec(getArgs(parts));
-                    averageDistances.init(dataDir);
+
+                    if (averageDistances != null) {
+                        averageDistances.init(dataDir);
+                    }
                     break;
                 }
                 case QUERY_COMMAND: {
@@ -70,7 +74,7 @@ public class Application implements AutoCloseable {
                         System.out.println("Data isn't loaded yet. Please, load it first.");
                         break;
                     }
-                    System.out.println(new Query().exec(getArgs(parts)));
+                    new Query().exec(getArgs(parts));
                     break;
                 }
                 case EXIT_COMMAND:
@@ -112,6 +116,9 @@ public class Application implements AutoCloseable {
         @Option(names = {"-l", "--limitPerFile"}, description = "Records limit per file. Default: unlimited.")
         private Long limitPerFile;
 
+        @Option(names = {"-m", "--printMemoryLayout"}, description = "Print memory layout statistics. Default: false.")
+        private boolean printMemoryLayout;
+
         public void exec(String... args) {
             new CommandLine(new Load()).execute(args);
         }
@@ -134,33 +141,36 @@ public class Application implements AutoCloseable {
                 builder.limitPerFile(limitPerFile);
             }
 
+            builder.printMemoryLayout(printMemoryLayout);
+
             return builder.build();
         }
     }
 
     @Command(name = "query", mixinStandardHelpOptions = true, version = "1.0",
         description = "Calculates an average of all trips started and finished within an incoming interval.")
-    private class Query implements Callable<Map<Integer, Double>> {
+    private class Query implements Runnable {
         @Parameters(index = "0", description = "A start of the interval (inclusively). ISO date-time: 2024-01-01T00:00:00.")
         private LocalDateTime start;
 
         @Parameters(index = "1", description = "An end of the interval (inclusively). ISO date-time: 2024-01-01T00:00:00.")
         private LocalDateTime end;
 
-        public Map<Integer, Double> exec(String... args) {
-            var commandLine = new CommandLine(new Query());
-            commandLine.execute(args);
-            return commandLine.getExecutionResult();
+        @Option(names = {"-r", "--repeat"}, description = "Number of repeats for this query. Default: 1.")
+        private int repeat = 1;
+
+        public void exec(String... args) {
+            new CommandLine(new Query()).execute(args);
         }
 
         @Override
-        public Map<Integer, Double> call() {
+        public void run() {
             try {
-                return averageDistances.getAverageDistances(start, end);
+                IntStream.range(0, repeat)
+                    .forEach(i -> System.out.println(averageDistances.getAverageDistances(start, end)));
             } catch (DateTimeParseException e) {
                 log.error("Bad incoming interval values. ", e);
                 System.out.println("Bad interval date. Use ISO date-time please (e.g. 2024-01-01T00:00:00).");
-                return Collections.emptyMap();
             }
         }
     }

@@ -73,8 +73,9 @@ public class Metrics implements Closeable {
 
     public void logMemoryConsumption(Object object) {
         try {
-            log.info("MEMORY. Total size of '{}': {}", object, byteCountToDisplaySize(GraphLayout.parseInstance(object).totalSize()));
-            log.info("MEMORY. Statistics for '{}': {}", object, GraphLayout.parseInstance(object).toFootprint());
+            var layout = GraphLayout.parseInstance(object);
+            log.info("MEMORY. Total size of '{}': {}", object, byteCountToDisplaySize(layout.totalSize()));
+            log.info("MEMORY. Statistics for '{}': {}", object, layout.toFootprint());
         } catch (Exception e) {
             log.warn("Can't use JOL to gather detailed memory statistics", e);
         }

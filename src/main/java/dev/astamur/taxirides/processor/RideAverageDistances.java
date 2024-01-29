@@ -54,7 +54,9 @@ public class RideAverageDistances implements AverageDistances {
         try (var loader = new FilesLoader(dataDir)) {
             loader.load();
         }
-        metrics.logMemoryConsumption(this);
+        if (config.printMemoryLayout()) {
+            metrics.logMemoryConsumption(this);
+        }
     }
 
     @Override

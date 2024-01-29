@@ -1,8 +1,8 @@
 package dev.astamur.taxirides.model;
 
-public record Config(Granularity granularity, int fileThreadsCount, long limitPerFile) {
+public record Config(Granularity granularity, int fileThreadsCount, long limitPerFile, boolean printMemoryLayout) {
     private Config(Builder builder) {
-        this(builder.granularity, builder.fileThreadsCount, builder.limitPerFile);
+        this(builder.granularity, builder.fileThreadsCount, builder.limitPerFile, builder.printMemoryLayout);
     }
 
     public static Config defaultConfig() {
@@ -17,6 +17,7 @@ public record Config(Granularity granularity, int fileThreadsCount, long limitPe
         private Granularity granularity = Granularity.HOURS;
         private int fileThreadsCount = 10;
         private long limitPerFile = Long.MAX_VALUE;
+        private boolean printMemoryLayout = false;
 
         public Builder granularity(Granularity granularity) {
             this.granularity = granularity;
@@ -30,6 +31,11 @@ public record Config(Granularity granularity, int fileThreadsCount, long limitPe
 
         public Builder limitPerFile(long limitPerFile) {
             this.limitPerFile = limitPerFile;
+            return this;
+        }
+
+        public Builder printMemoryLayout(boolean printMemoryLayout) {
+            this.printMemoryLayout = printMemoryLayout;
             return this;
         }
 
