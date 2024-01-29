@@ -19,7 +19,7 @@ number of trips in a search interval).
 - Nodes of the tree store **average statistics** but not the trips. It also helps to same memory.
 - Parallel files loading is possible (configured by `--fileThreadsCount` flag for `load` command, default value
   is `10`).
-- Parallel query execution (configured by `--queryThreadsCount` flag for `load` command, default value is `1`). But as
+- Parallel query execution in tree partitions (configured by `--queryThreadsCount` flag for `load` command, default value is `1`). But as
   we can see in the `Performance statistics` section, it didn't give many benefits.
 
 ## Run
@@ -44,7 +44,6 @@ some key metrics are published to logs.
 
 - The application doesn't support updates now. But versioning can be implemented on the subtrees level by copying them (
   not the full tree).
-- Parallel range computations can be implemented by using partitions, for example.
 
 ## Performance statistics
 
