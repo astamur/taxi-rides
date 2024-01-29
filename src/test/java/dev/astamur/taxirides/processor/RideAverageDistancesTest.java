@@ -1,19 +1,19 @@
 package dev.astamur.taxirides.processor;
 
+import static dev.astamur.taxirides.utils.TestUtils.END;
+import static dev.astamur.taxirides.utils.TestUtils.START;
 import static dev.astamur.taxirides.utils.TestUtils.createRide;
 import static dev.astamur.taxirides.utils.TestUtils.ridesToParquet;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.astamur.taxirides.model.Config;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class RideAverageDistancesTest {
-    private static final LocalDateTime START = LocalDateTime.parse("2024-01-01T00:00:00");
-    private static final LocalDateTime END = LocalDateTime.parse("2024-02-01T00:00:00");
-
     @Test
     public void shouldProcessMultipleFiles() {
         String dir = "/tmp/" + UUID.randomUUID();
@@ -23,12 +23,13 @@ class RideAverageDistancesTest {
         createFiles(dir, 4, 25, 4, 5.);
         createFiles(dir, 5, 30, 5, 5.);
 
+        var expectedMap = Map.of(1, 5.0, 2, 5.0, 3, 5.0, 4, 5.0, 5, 5.0);
+
         try (var processor = new RideAverageDistances(Config.defaultConfig())) {
             processor.init(Path.of(dir));
 
             var result = processor.getAverageDistances(START, END);
-
-            System.out.println(result);
+            assertThat(result).isEqualTo(expectedMap);
         }
     }
 

@@ -32,6 +32,8 @@ import org.apache.parquet.io.OutputFile;
 
 
 public class TestUtils {
+    public static final LocalDateTime START = LocalDateTime.parse("2024-01-01T00:00:00");
+    public static final LocalDateTime END = LocalDateTime.parse("2024-02-01T00:00:00");
     private static final Logger log = LogManager.getLogger();
     private static final String RIDE_SCHEMA_FILE = "ride.avsc";
     private static final String DEFAULT_PARQUET_DIR = "/tmp";
@@ -52,9 +54,10 @@ public class TestUtils {
     }
 
     public static Ride createRide(int count, double distance) {
-        // Interval up to 10 hours within January 2024
-        var start = timestamp("2024-01-01T00:00:00") + random.nextLong(2_556_000_000L);
-        var end = start + random.nextLong(36_000_000L);
+        // An interval within January 2024
+        var diff = timestamp(END) - timestamp(START);
+        var start = timestamp(START);
+        var end = start + random.nextLong(diff);
 
         return new Ride(count, distance, Intervals.of(start, end));
     }
@@ -77,7 +80,11 @@ public class TestUtils {
     }
 
     public static long timestamp(String dateTime) {
-        return LocalDateTime.parse(dateTime).toInstant(ZoneOffset.UTC).toEpochMilli();
+        return timestamp(LocalDateTime.parse(dateTime));
+    }
+
+    public static long timestamp(LocalDateTime localDateTime) {
+        return localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
     }
 
     public static <R, C extends Collector<Ride, R, C>> void populateRides(IntervalTree<Ride, R, C> tree,
